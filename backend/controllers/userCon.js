@@ -3,6 +3,8 @@ const bcrypt = require("bcryptjs");
 const asyncHandler = require("express-async-handler");
 const User = require("../modules/user");
 
+
+
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
@@ -17,10 +19,11 @@ const registerUser = asyncHandler(async (req, res) => {
 
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
+  const hashedEmail = await bcrypt.hash(email, salt)
 
   const user = await User.create({
     name,
-    email,
+    email: hashedEmail,
     password: hashedPassword,
   });
 
@@ -74,21 +77,34 @@ const getUser = asyncHandler(async (req, res) => {
 });
 
 
+//get all users
+const all = asyncHandler(async(req, res) => {
+try {
+  const user = await User.find({})
+  res.json(user)
+} catch (error) {
+  
+}
+})
 
-const updateUser =  asyncHandler(async(req, res) => {
+
+
+const updateUser = asyncHandler(async(req, res) => {
+
   if(req.body.userId === req.params.id) {
     if(req.body.password) {
-        try {
-            const salt = await bcrypt.genSalt(10)
-            req.body.password = await bcrypt.hash(req.body.password, salt)
-        } catch (error) {
-            return res.status(400).json(error)
-        }
+      try {
+        const salt = await bcrypt.genSalt(10)
+        req.body.password = await bcrypt.hash(req.body.password, salt)
+      } catch (error) {
+        return res.status(400).json(error)
+      }
     }
     try {
-        const user = await User.findByIdAndUpdate(req.params.id, {
-            $set: req.body,
-        });
+      const user = await User.findByIdAndUpdate(req.params.id, {
+        $set: req.body,
+        $set: req.file,
+      });
         res.status(200).json('account updated')
     } catch (error) {
         return res.status(400).json(error)
@@ -175,5 +191,6 @@ module.exports = {
   deleteUser,
   followUser,
   unfollowUser,
-  getUser
+  getUser,
+  all
 };

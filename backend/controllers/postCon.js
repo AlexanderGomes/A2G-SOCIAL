@@ -1,45 +1,88 @@
-const Post = require("../modules/post");
+const Goal = require("../modules/goal");
 const User = require("../modules/user");
 const asyncHandler = require("express-async-handler");
 
-const createPost = asyncHandler(async (req, res) => {
-  const newPost = new Post(req.body);
 
-  try {
-    const savedPost = await newPost.save();
-    res.status(200).json(savedPost);
-  } catch (error) {
-    res.status(500).json(error);
-  }
-});
+const getGoals = asyncHandler(async (req, res) => {
+  const goals = await Goal.find({ user: req.user.id })
 
-const updatePost = asyncHandler(async (req, res) => {
-  try {
-    const post = await Post.findById(req.params.id);
-    if (post.userId.toString() === req.body.userId) {
-      await post.updateOne({ $set: req.body });
-      res.status(200).json("the post has been updated");
-    } else {
-      res.status(403).json("you can only update your post");
-    }
-  } catch (error) {
-    res.status(500).json(error);
-  }
-});
+  res.status(200).json(goals)
+})
 
-const deletePost = asyncHandler(async (req, res) => {
-  try {
-    const post = await Post.findById(req.params.id);
-    if (post.userId.toString() === req.body.userId) {
-      await post.deleteOne();
-      res.status(200).json("the post has been delete");
-    } else {
-      res.status(403).json("you can only delete your post");
-    }
-  } catch (error) {
-    res.status(500).json(error);
+// @desc    Set goal
+// @route   POST /api/goals
+// @access  Private
+const setGoal = asyncHandler(async (req, res) => {
+  if (!req.body.text) {
+    res.status(400)
+    throw new Error('Please add a text field')
   }
-});
+
+  const goal = await Goal.create({
+    text: req.body.text,
+    user: req.user.id,
+  })
+
+  res.status(200).json(goal)
+})
+
+// @desc    Update goal
+// @route   PUT /api/goals/:id
+// @access  Private
+const updateGoal = asyncHandler(async (req, res) => {
+  const goal = await Goal.findById(req.params.id)
+
+  if (!goal) {
+    res.status(400)
+    throw new Error('Goal not found')
+  }
+
+  // Check for user
+  if (!req.user) {
+    res.status(401)
+    throw new Error('User not found')
+  }
+
+  // Make sure the logged in user matches the goal user
+  if (goal.user.toString() !== req.user.id) {
+    res.status(401)
+    throw new Error('User not authorized')
+  }
+
+  const updatedGoal = await Goal.findByIdAndUpdate(req.params.id, req.body, {
+    new: true,
+  })
+
+  res.status(200).json(updatedGoal)
+})
+
+// @desc    Delete goal
+// @route   DELETE /api/goals/:id
+// @access  Private
+const deleteGoal = asyncHandler(async (req, res) => {
+  const goal = await Goal.findById(req.params.id)
+
+  if (!goal) {
+    res.status(400)
+    throw new Error('Goal not found')
+  }
+
+  // Check for user
+  if (!req.user) {
+    res.status(401)
+    throw new Error('User not found')
+  }
+
+  // Make sure the logged in user matches the goal user
+  if (goal.user.toString() !== req.user.id) {
+    res.status(401)
+    throw new Error('User not authorized')
+  }
+
+  await goal.remove()
+
+  res.status(200).json({ id: req.params.id })
+})
 
 const like__deslike__post = asyncHandler(async (req, res) => {
   try {
@@ -56,14 +99,6 @@ const like__deslike__post = asyncHandler(async (req, res) => {
   }
 });
 
-const getPost = asyncHandler(async (req, res) => {
-  try {
-    const post = await Post.findById(req.params.id);
-    res.status(200).json(post);
-  } catch (error) {
-    res.status(500).json(error);
-  }
-});
 
 const getTimelinePosts = asyncHandler(async (req, res) => {
   try {
@@ -81,10 +116,10 @@ const getTimelinePosts = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
-  createPost,
-  deletePost,
-  getPost,
-  updatePost,
+  getGoals,
+  updateGoal,
+  deleteGoal,
+  setGoal,
   like__deslike__post,
   getTimelinePosts,
 };
